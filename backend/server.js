@@ -22,7 +22,6 @@ app.use(express.json());
 app.use(
   cors({
     origin: [
-      "ai-proctored-system-git-main-priyanka-guptas-projects-b28ab884.vercel.app",
       "http://localhost:3000",
       "http://localhost:5000",
     ],

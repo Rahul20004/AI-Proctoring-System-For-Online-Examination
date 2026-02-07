@@ -22,6 +22,7 @@ app.use(express.json());
 app.use(
   cors({
     origin: [
+      "https://priyanka-ai-proctored-frontend.onrender.com",
       "http://localhost:3000",
       "http://localhost:5000",
     ],

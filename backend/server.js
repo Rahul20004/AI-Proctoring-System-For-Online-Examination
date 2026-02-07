@@ -17,27 +17,18 @@ connectDB();
 const app = express();
 const port = process.env.PORT || 5000;
 
-// to parse req body
-app.use(express.json());
-const allowedOrigins = [
-  "https://priyanka-ai-proctored-frontend.onrender.com",
-  "http://localhost:3000"
-];
-
-app.use(cors({
-  origin: function (origin, callback) {
-
-    // allow requests with no origin (mobile apps, postman etc)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("CORS blocked"));
-    }
-  },
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: [
+      "https://priyanka-ai-proctored-frontend.onrender.com",
+      "http://localhost:3000",
+      
+    ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

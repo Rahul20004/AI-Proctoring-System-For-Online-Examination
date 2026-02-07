@@ -20,7 +20,7 @@ const port = process.env.PORT || 5000;
 // to parse req body
 app.use(express.json());
 const allowedOrigins = [
-  "https://ai-proctored-system-snowy.vercel.app",
+  "https://priyanka-ai-proctored-frontend.onrender.com",
   "http://localhost:3000"
 ];
 

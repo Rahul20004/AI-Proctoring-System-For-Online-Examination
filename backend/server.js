@@ -22,7 +22,7 @@ app.use(express.json());
 app.use(
   cors({
     origin: [
-      "ai-proctored-system-snowy.vercel.app",
+      "https://priyanka-ai-proctored-system-backend.onrender.com",
       "http://localhost:3000",
       "http://localhost:5000",
     ],

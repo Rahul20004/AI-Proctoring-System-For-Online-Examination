@@ -19,18 +19,26 @@ const port = process.env.PORT || 5000;
 
 // to parse req body
 app.use(express.json());
-app.use(
-  cors({
-    origin: [
-      "https://ai-proctored-system-snowy.vercel.app",
-      "http://localhost:3000",
-      "http://localhost:5000",
-    ],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
-);
+const allowedOrigins = [
+  "https://ai-proctored-system-snowy.vercel.app",
+  "http://localhost:3000"
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+
+    // allow requests with no origin (mobile apps, postman etc)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("CORS blocked"));
+    }
+  },
+  credentials: true
+}));
+
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 

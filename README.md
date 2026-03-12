@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # ProctoAI-MERN
 
 ProctoAI-MERN is an Automated Exam Proctoring System (AEPS) developed with cutting-edge AI-based algorithms for online exams. This comprehensive system is designed to ensure the integrity and security of online examinations. The project leverages technologies such as React.js, Redux, Node.js, and TensorFlow.js to offer a feature-rich exam proctoring solution.
@@ -178,3 +179,6 @@ To run this project locally, follow these steps:
 2. Install the required dependencies in both the frontend and backend folders.
 3. Start the server using `npm start` in the backend folder.
 4. Start the React app using `npm start` in the frontend folder.
+=======
+# AI-Proctoring-System-For-Online-Examination
+>>>>>>> 3cf44e995d3234ef0a43b773cf45500a2c95579e

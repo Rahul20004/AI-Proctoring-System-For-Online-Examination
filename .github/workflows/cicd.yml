@@ -9,7 +9,6 @@ on:
 jobs:
 
   backend-test:
-    name: Backend Tests
     runs-on: ubuntu-latest
 
     services:
@@ -26,25 +25,21 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install Backend Dependencies
+      - name: Install Dependencies
         run: npm install
-
-      - name: Run ESLint
-        run: npm run lint || true
 
       - name: Run Backend Tests
         env:
-          MONGO_URI: mongodb://localhost:27017/proctoai_test
+          MONGO_URL: mongodb://localhost:27017/proctoai_test
           JWT_SECRET: test-secret
         run: npm test || true
 
   frontend-build:
-    name: Frontend Build
     runs-on: ubuntu-latest
 
     defaults:
@@ -55,16 +50,13 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install Frontend Dependencies
+      - name: Install Dependencies
         run: npm install
-
-      - name: Run ESLint
-        run: npm run lint || true
 
       - name: Build React App
         run: npm run build

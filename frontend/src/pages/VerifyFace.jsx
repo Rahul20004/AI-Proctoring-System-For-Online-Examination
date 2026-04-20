@@ -25,7 +25,7 @@ const VerifyFace = () => {
   const [verifyFaceAPI] = useVerifyFaceMutation();
   const { userInfo } = useSelector((state) => state.auth);
 
-  // ── Load face-api models on mount ─────────────────────────────────────────
+  // ── Load face-api models once on mount ───────────────────────────────────
   useEffect(() => {
     const loadModels = async () => {
       try {
@@ -35,22 +35,14 @@ const VerifyFace = () => {
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
         ]);
         setModelsLoaded(true);
+        console.log('[VerifyFace] face-api models loaded');
       } catch (err) {
-        console.error('Model load error:', err);
+        console.error('[VerifyFace] Model load error:', err);
         setErrorMsg('Failed to load face verification models. Please refresh.');
       }
     };
     loadModels();
   }, []);
-
-  const loadImage = (src) =>
-    new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.src = src;
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-    });
 
   // ── Main verification handler ─────────────────────────────────────────────
   const handleVerify = async () => {
@@ -60,7 +52,7 @@ const VerifyFace = () => {
     setErrorMsg('');
     setVerifying(true);
 
-    // 1. Capture live frame
+    // ── Step 1: Capture live webcam frame ────────────────────────────────
     const capturedImage = webcamRef.current?.getScreenshot();
     if (!capturedImage) {
       setErrorMsg('Could not capture webcam image. Please try again.');
@@ -68,79 +60,84 @@ const VerifyFace = () => {
       return;
     }
 
-    // 2. Fetch stored profile image from DB (registered at signup)
-    let storedImage = null;
+    // ── Step 2: Fetch stored face descriptor from DB ─────────────────────
+    let storedDescriptor = null;
     try {
       const res = await axios.get('/api/users/profile', {
         headers: { Authorization: `Bearer ${userInfo.token}` },
       });
-      storedImage = res.data.profileImage;
-    } catch {
+      console.log('[VerifyFace] Profile fetched from DB:', res.data);
+      storedDescriptor = res.data.faceDescriptor; // array of 128 floats or null
+    } catch (err) {
+      console.error('[VerifyFace] Profile fetch error:', err);
       setErrorMsg('Could not fetch your profile. Please re-login and try again.');
       setVerifying(false);
       return;
     }
 
-    // 3. Strict check – no bypass allowed
-    if (!storedImage) {
+    // ── Step 3: Guard – no descriptor means not registered ───────────────
+    if (!storedDescriptor || storedDescriptor.length !== 128) {
       setStatus('Not Verified');
-      setErrorMsg('No profile image found. Please re-register with your face photo.');
+      setErrorMsg(
+        'No face registered. Please re-register with your face photo to enable verification.'
+      );
       setVerifying(false);
       return;
     }
 
-    // 4. Run face-api comparison
+    // ── Step 4: Extract live descriptor from webcam frame ────────────────
     try {
-      const [registeredImg, liveImg] = await Promise.all([
-        loadImage(storedImage),
-        loadImage(capturedImage),
-      ]);
+      const liveImg = await new Promise((resolve, reject) => {
+        const el = new Image();
+        el.crossOrigin = 'anonymous';
+        el.src = capturedImage;
+        el.onload = () => resolve(el);
+        el.onerror = reject;
+      });
 
-      const [registeredFace, liveFace] = await Promise.all([
-        faceapi.detectSingleFace(registeredImg).withFaceLandmarks().withFaceDescriptor(),
-        faceapi.detectSingleFace(liveImg).withFaceLandmarks().withFaceDescriptor(),
-      ]);
+      const liveDetection = await faceapi
+        .detectSingleFace(liveImg)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
 
-      if (!registeredFace) {
-        setStatus('Not Verified');
-        setErrorMsg('Could not detect face in your registered profile image.');
-        setVerifying(false);
-        return;
-      }
-      if (!liveFace) {
+      if (!liveDetection) {
         setStatus('Not Verified');
         setErrorMsg('No face detected in webcam. Adjust lighting and look directly at the camera.');
         setVerifying(false);
         return;
       }
 
-      const distance = faceapi.euclideanDistance(
-        registeredFace.descriptor,
-        liveFace.descriptor
-      );
+      const liveDescriptor = liveDetection.descriptor; // Float32Array
 
-      // 5. Decision
-      if (distance < 0.5) {
+      // ── Step 5: Compute Euclidean distance ───────────────────────────
+      const storedFloat32 = new Float32Array(storedDescriptor);
+      const distance = faceapi.euclideanDistance(storedFloat32, liveDescriptor);
+      console.log(`[VerifyFace] Euclidean distance: ${distance.toFixed(4)}`);
+
+      // ── Step 6: Decision ─────────────────────────────────────────────
+      if (distance < 0.6) {
         // ✅ VERIFIED
         setStatus('Verified');
-        // Log successful verification in backend
+        console.log('[VerifyFace] ✅ Face matched – proceeding to exam');
+        // Non-blocking backend log
         try {
           await verifyFaceAPI({ capturedImage }).unwrap();
         } catch {
-          /* non-blocking – verification result is already determined */
+          /* non-blocking */
         }
-        // Navigate to exam after short delay so user sees "Verified"
+        // Navigate after short delay so user sees "Verified"
         setTimeout(() => navigate(`/exam/${examId}`), 1500);
       } else {
-        // ❌ NOT VERIFIED – exam must NOT start
+        // ❌ NOT VERIFIED
+        console.warn(`[VerifyFace] ❌ Face mismatch – distance ${distance.toFixed(4)} >= 0.6`);
         setStatus('Not Verified');
-        setErrorMsg('Face does not match. Exam blocked.');
+        setErrorMsg(`Face does not match (distance: ${distance.toFixed(3)}). Exam blocked.`);
         setVerifying(false);
       }
     } catch (err) {
-      console.error('Verification error:', err);
+      console.error('[VerifyFace] Verification error:', err);
       setStatus('Not Verified');
-      setErrorMsg('Face verification failed. Please try again.');
+      setErrorMsg('Face verification failed unexpectedly. Please try again.');
       setVerifying(false);
     }
   };
@@ -184,11 +181,12 @@ const VerifyFace = () => {
             mb: 3,
             borderRadius: 2,
             overflow: 'hidden',
-            border: status === 'Verified'
-              ? '3px solid #4caf50'
-              : status === 'Not Verified'
-              ? '3px solid #f44336'
-              : '2px solid #555',
+            border:
+              status === 'Verified'
+                ? '3px solid #4caf50'
+                : status === 'Not Verified'
+                ? '3px solid #f44336'
+                : '2px solid #555',
             transition: 'border-color 0.3s ease',
           }}
         >

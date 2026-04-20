@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import { Container, Typography, Box, Paper, CircularProgress, TextField, MenuItem, Select, FormControl, InputLabel, InputAdornment, useTheme } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import { useGetExamsQuery } from '../slices/examApiSlice';
+import { useGetMyResultsQuery } from '../slices/resultApiSlice';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import ExamTable from '../components/ExamTable';
@@ -14,6 +15,7 @@ const DashboardScreen = () => {
   const theme = useTheme();
   // We specify polling interval if we want dynamic updates, but let RTK naturally refetch on mount.
   const { data: exams, isLoading, error, refetch } = useGetExamsQuery(undefined, { refetchOnMountOrArgChange: true });
+  const { data: myResults } = useGetMyResultsQuery(undefined, { refetchOnMountOrArgChange: true });
 
   const [searchTerm, setSearchTerm] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('All');
@@ -122,7 +124,7 @@ const DashboardScreen = () => {
           ) : error ? (
             <Typography color="error" mt={3} fontWeight={600}>Failed to load exams automatically. (Server may have restarted).</Typography>
           ) : filteredExams.length > 0 ? (
-             <ExamTable exams={filteredExams} />
+             <ExamTable exams={filteredExams} resultsData={myResults} />
           ) : (
              <Paper sx={{ p: 5, borderRadius: '16px', textAlign: 'center', bgcolor: '#ffffff', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', mt: 3, border: '1px dashed #e0e0e0' }}>
                <Typography variant="h6" sx={{ color: '#2c3e50', fontWeight: 600 }}>

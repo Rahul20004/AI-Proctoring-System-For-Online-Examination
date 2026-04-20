@@ -21,7 +21,11 @@ const userSchema = new mongoose.Schema({
     default: 'student'
   },
   profileImage: {
-    type: String, // Can store base64 string or a path to image
+    type: String, // base64 or URL
+    default: null
+  },
+  faceDescriptor: {
+    type: [Number], // 128-d float vector from face-api.js
     default: null
   }
 }, {

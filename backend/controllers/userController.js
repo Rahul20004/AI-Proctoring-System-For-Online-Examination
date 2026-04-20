@@ -17,7 +17,8 @@ const authUser = asyncHandler(async (req, res) => {
       email: user.email,
       role: user.role,
       token: generateToken(user._id),
-      profileImage: user.profileImage
+      profileImage: user.profileImage,
+      faceDescriptor: user.faceDescriptor ?? null,
     });
   } else {
     res.status(401);
@@ -29,7 +30,7 @@ const authUser = asyncHandler(async (req, res) => {
 // @route   POST /api/users/register
 // @access  Public
 const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password, role, faceImage } = req.body;
+  const { name, email, password, role, faceImage, faceDescriptor } = req.body;
 
   const userExists = await User.findOne({ email });
 
@@ -43,16 +44,20 @@ const registerUser = asyncHandler(async (req, res) => {
     email,
     password,
     role,
-    profileImage: req.body.profileImage || req.body.faceImage
+    profileImage: faceImage || null,
+    faceDescriptor: faceDescriptor || null,
   });
 
   if (user) {
+    console.log(`[Register] User ${user._id} – faceDescriptor stored: ${faceDescriptor ? 'YES (' + faceDescriptor.length + ' dims)' : 'NO'}`);
     res.status(201).json({
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
       token: generateToken(user._id),
+      profileImage: user.profileImage,
+      faceDescriptor: user.faceDescriptor ?? null,
     });
   } else {
     res.status(400);
@@ -101,6 +106,29 @@ const saveFace = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Save face descriptor (128-d vector) for a user
+// @route   POST /api/users/save-face-descriptor
+// @access  Private
+const saveFaceDescriptor = asyncHandler(async (req, res) => {
+  const { faceDescriptor } = req.body;
+  const user = await User.findById(req.user._id);
+
+  if (!user) {
+    res.status(404);
+    throw new Error('User not found');
+  }
+
+  if (!faceDescriptor || !Array.isArray(faceDescriptor) || faceDescriptor.length !== 128) {
+    res.status(400);
+    throw new Error('Invalid face descriptor – expected 128-element float array.');
+  }
+
+  user.faceDescriptor = faceDescriptor;
+  await user.save();
+  console.log(`[SaveDescriptor] Stored 128-d descriptor for user ${user._id}`);
+  res.json({ message: 'Face descriptor saved successfully.' });
+});
+
 const getUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user._id);
   
@@ -110,7 +138,8 @@ const getUserProfile = asyncHandler(async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      profileImage: user.profileImage
+      profileImage: user.profileImage,
+      faceDescriptor: user.faceDescriptor ?? null,
     });
   } else {
     res.status(404);
@@ -118,4 +147,4 @@ const getUserProfile = asyncHandler(async (req, res) => {
   }
 });
 
-export { authUser, registerUser, verifyFace, saveFace, getUserProfile };
+export { authUser, registerUser, verifyFace, saveFace, saveFaceDescriptor, getUserProfile };

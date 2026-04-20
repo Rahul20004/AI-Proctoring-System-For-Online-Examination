@@ -30,6 +30,16 @@ const TakeExamScreen = () => {
   const faceModelRef = useRef(null);
   const objModelRef = useRef(null);
 
+  // Stability counters – require N consecutive bad frames before alerting
+  const noFaceCountRef    = useRef(0);
+  const multiFaceCountRef = useRef(0);
+  const FACE_MISS_THRESHOLD = 3; // 3 × 3 s = 9 s of continuous absence
+
+  // Tab-switch detection
+  const tabSwitchCountRef  = useRef(0);
+  const TAB_SWITCH_LIMIT   = 2;           // max allowed switches before auto-submit
+  const [tabSwitchCount, setTabSwitchCount] = useState(0); // for UI display
+
   // Initialize Exam
   useEffect(() => {
     if (examList) {
@@ -43,12 +53,82 @@ const TakeExamScreen = () => {
     const loadModels = async () => {
       await tf.ready();
       await faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/');
-      // faceModelRef is no longer needed since we use face-api directly
       objModelRef.current = await cocoSsd.load();
       setModelsLoaded(true);
     };
     loadModels();
   }, []);
+
+  // ── Tab-Switch Detection ──────────────────────────────────────────────────
+  useEffect(() => {
+    if (!exam) return; // don't monitor until exam is loaded
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'hidden') {
+        tabSwitchCountRef.current += 1;
+        const count = tabSwitchCountRef.current;
+        setTabSwitchCount(count);
+
+        console.log(`[TabGuard] Tab switched – count: ${count}/${TAB_SWITCH_LIMIT}`);
+
+        // Log to cheat record
+        setCheatLogs(prev => [...prev, { type: `Tab Switch #${count}`, timestamp: new Date() }]);
+
+        if (count > TAB_SWITCH_LIMIT) {
+          // ─── AUTO SUBMIT ──────────────────────────────────────────────
+          console.warn('[TabGuard] ❌ Limit exceeded – auto-submitting exam');
+          Swal.fire({
+            icon: 'error',
+            title: '🚫 Auto Submitted',
+            html: 'You switched tabs too many times.<br/>Your exam has been <b>auto-submitted</b>.',
+            timer: 4000,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            allowOutsideClick: false,
+          });
+          // Submit with current answers after brief display
+          setTimeout(() => {
+            const timeSpentAmount = Math.floor((Date.now() - startTimeRef.current) / 1000);
+            const finalTimeSpent = [...timeSpent, { questionIndex: currentQuestionIndex, timeSpent: timeSpentAmount }];
+            submitExamData(finalTimeSpent);
+          }, 1500);
+        } else {
+          // ─── WARNING ─────────────────────────────────────────────────
+          const remaining = TAB_SWITCH_LIMIT - count;
+          Swal.fire({
+            icon: 'warning',
+            title: "⚠️ Don't switch tabs!",
+            html: `Tab switch <b>#${count}</b> detected.<br/>
+                   <span style="color:#e53935;font-weight:700">
+                     ${remaining} warning${remaining === 1 ? '' : 's'} remaining before auto-submit.
+                   </span>`,
+            confirmButtonColor: '#e53935',
+            confirmButtonText: 'Return to Exam',
+            allowOutsideClick: false,
+          });
+        }
+      }
+    };
+
+    // Also catch window blur (alt-tab, minimise, DevTools open, etc.)
+    const handleBlur = () => {
+      // visibilitychange covers most cases; blur is a secondary safeguard
+      // Only fire if visibility is still 'visible' to avoid double-counting
+      if (document.visibilityState === 'visible') {
+        handleVisibilityChange();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('blur', handleBlur);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exam, timeSpent, currentQuestionIndex]);
+
 
   // Timer configuration
   const [timeLeft, setTimeLeft] = useState(0);
@@ -154,51 +234,120 @@ const TakeExamScreen = () => {
       const resizedDetections = faceapi.resizeResults(detections, { width: videoWidth, height: videoHeight });
       faceapi.draw.drawDetections(canvas, resizedDetections);
 
-      // Draw bounding boxes and evaluate predictions
-      objects.forEach(prediction => {
-        if (prediction.score > 0.4) {
-          const [x, y, width, height] = prediction.bbox;
-          const area = width * height;
-          
-          // Draw the rectangle
-          ctx.strokeStyle = '#00FFFF';
-          ctx.lineWidth = 4;
-          ctx.strokeRect(x, y, width, height);
+      // ── Object Detection ─────────────────────────────────────────────────
+      // Pass 1a – PROHIBITED  (phone/laptop) → threshold 0.25, red box
+      // Pass 1b – SUSPICIOUS  (books/notes)  → threshold 0.30, orange box
+      // Pass 2  – General objects             → threshold 0.40, cyan box
 
-          // Draw the label
-          ctx.fillStyle = '#00FFFF';
-          ctx.font = '18px Arial';
+      const PROHIBITED_THRESHOLD = 0.25;
+      const SUSPICIOUS_THRESHOLD = 0.30;
+      const GENERAL_THRESHOLD    = 0.40;
+
+      const PROHIBITED_CLASSES = ['cell phone', 'laptop'];
+      const SUSPICIOUS_CLASSES  = [
+        'book', 'notebook', 'magazine', 'paper',
+        'keyboard', 'mouse', 'remote',
+        'earphones', 'headphones', 'airpods',
+        'backpack', 'handbag', 'suitcase'
+      ];
+
+      objects.forEach(prediction => {
+        const [x, y, width, height] = prediction.bbox;
+        const area  = width * height;
+        const score = prediction.score;
+        const cls   = prediction.class;
+
+        // Pass 1a: PROHIBITED – sensitive threshold ───────────────────────
+        if (PROHIBITED_CLASSES.includes(cls) && score > PROHIBITED_THRESHOLD) {
+          console.log(`[Proctor] 📵 PROHIBITED: "${cls}" | confidence: ${(score * 100).toFixed(1)}% | partial: ${score < GENERAL_THRESHOLD}`);
+
+          ctx.strokeStyle = '#ff1744'; // red
+          ctx.lineWidth   = 4;
+          ctx.strokeRect(x, y, width, height);
+          ctx.fillStyle = '#ff1744';
+          ctx.font      = 'bold 16px Arial';
           ctx.fillText(
-            `${prediction.class} (${Math.round(prediction.score * 100)}%)`,
-            x,
-            y > 20 ? y - 5 : 10
+            `🚫 ${cls.toUpperCase()} (${Math.round(score * 100)}%)`,
+            x, y > 22 ? y - 6 : 16
           );
 
-          // Logic for explicit prohibited objects
-          if (prediction.class === "cell phone" || prediction.class === "laptop") {
-            eventTitle = `⚠️ Prohibited object detected: ${prediction.class.toUpperCase()}`;
-          }
+          eventTitle = `⚠️ Mobile Detected: ${cls.toUpperCase()}`;
+          return;
+        }
 
-          // Store state for fallback logic
-          if (prediction.class === "person") {
+        // Pass 1b: SUSPICIOUS objects – partial-visibility threshold ──────
+        if (SUSPICIOUS_CLASSES.includes(cls) && score > SUSPICIOUS_THRESHOLD) {
+          console.log(`[Proctor] 📚 SUSPICIOUS: "${cls}" | confidence: ${(score * 100).toFixed(1)}%`);
+
+          ctx.strokeStyle = '#ff9100'; // orange
+          ctx.lineWidth   = 4;
+          ctx.strokeRect(x, y, width, height);
+          ctx.fillStyle = '#ff9100';
+          ctx.font      = 'bold 16px Arial';
+          ctx.fillText(
+            `⚠️ ${cls.toUpperCase()} (${Math.round(score * 100)}%)`,
+            x, y > 22 ? y - 6 : 16
+          );
+
+          if (!eventTitle) {
+            eventTitle = `⚠️ Object Detected: ${cls.toUpperCase()}`;
+          }
+          return;
+        }
+
+        // Pass 2: General objects – normal threshold ───────────────────────
+        if (score > GENERAL_THRESHOLD) {
+          ctx.strokeStyle = '#00FFFF'; // cyan
+          ctx.lineWidth   = 4;
+          ctx.strokeRect(x, y, width, height);
+          ctx.fillStyle = '#00FFFF';
+          ctx.font      = '18px Arial';
+          ctx.fillText(
+            `${cls} (${Math.round(score * 100)}%)`,
+            x, y > 20 ? y - 5 : 10
+          );
+
+          console.log(`[Proctor] 🔍 Detected: "${cls}" | confidence: ${(score * 100).toFixed(1)}% | area: ${Math.round(area)}`);
+
+          if (cls === 'person') {
             hasPerson = true;
-          } else if (area > 40000 || prediction.class === "book") {
-            // Treat large unlabelled objects or explicitly labelled books as suspicious
+          } else if (area > 40000) {
+            // Fallback: any large unclassified object near the person is suspicious
             hasSuspiciousObject = true;
           }
         }
       });
 
-      // Smart Fallback Rule: If person is detected alongside a large/unrecognized object
-      if (!eventTitle && hasPerson && hasSuspiciousObject) {
-         eventTitle = "⚠️ Suspicious object detected";
+      // Fallback: large unclassified object in frame (no specific class match)
+      if (!eventTitle && hasSuspiciousObject) {
+        console.log('[Proctor] ⚠️ Suspicious large unclassified object in frame');
+        eventTitle = '⚠️ Suspicious Object Detected';
       }
 
-      // Face Proctoring logic (Critical priority)
+      // ── Face Proctoring – stability-gated ───────────────────────────────
       if (detections.length === 0) {
-        eventTitle = 'Face Not Visible';
+        noFaceCountRef.current += 1;
+        multiFaceCountRef.current = 0; // reset the other counter
+        console.log(`[Proctor] No face detected – consecutive misses: ${noFaceCountRef.current}/${FACE_MISS_THRESHOLD}`);
+
+        if (noFaceCountRef.current >= FACE_MISS_THRESHOLD) {
+          // Confirmed absence over multiple frames
+          eventTitle = 'Face Not Visible';
+          // Don't reset yet – keep alerting every N frames until face returns
+        }
       } else if (detections.length > 1) {
-        eventTitle = 'Multiple Faces Detected';
+        multiFaceCountRef.current += 1;
+        noFaceCountRef.current = 0;
+        console.log(`[Proctor] Multiple faces (${detections.length}) – consecutive: ${multiFaceCountRef.current}/${FACE_MISS_THRESHOLD}`);
+
+        if (multiFaceCountRef.current >= FACE_MISS_THRESHOLD) {
+          eventTitle = 'Multiple Faces Detected';
+        }
+      } else {
+        // Exactly one face – all good, reset both counters
+        noFaceCountRef.current   = 0;
+        multiFaceCountRef.current = 0;
+        console.log('[Proctor] ✅ Face Visible – counters reset');
       }
 
       if (eventTitle) {
@@ -332,8 +481,20 @@ const TakeExamScreen = () => {
               />
             </Box>
             <Box mt={2}>
-              <Typography variant="caption" color="textSecondary">
+              <Typography variant="caption" color="textSecondary" display="block">
                 Warnings logged: {cheatLogs.length}
+              </Typography>
+              <Typography
+                variant="caption"
+                display="block"
+                sx={{
+                  mt: 0.5,
+                  fontWeight: 700,
+                  color: tabSwitchCount >= TAB_SWITCH_LIMIT ? '#e53935' : tabSwitchCount > 0 ? '#ff9800' : '#4caf50',
+                }}
+              >
+                Tab switches: {tabSwitchCount} / {TAB_SWITCH_LIMIT}
+                {tabSwitchCount >= TAB_SWITCH_LIMIT && ' — ⚠️ Next switch = Auto Submit'}
               </Typography>
             </Box>
           </Paper>

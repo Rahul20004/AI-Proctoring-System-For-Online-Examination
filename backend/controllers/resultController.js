@@ -8,6 +8,13 @@ import Exam from '../models/Exam.js';
 const createResult = asyncHandler(async (req, res) => {
   const { examId, score, totalQuestions, timeSpentPerQuestion, cheatLogs } = req.body;
 
+  // Block re-attempt: student can only submit once per exam
+  const existing = await Result.findOne({ student: req.user._id, exam: examId });
+  if (existing) {
+    res.status(400);
+    throw new Error('You have already submitted this exam.');
+  }
+
   const cheatLogCount = cheatLogs ? cheatLogs.length : 0;
   const reportSummary = cheatLogCount > 0 ? `Completed with ${cheatLogCount} AI warnings.` : `Completed successfully with 0 warnings.`;
   const cheatingLogId = cheatLogCount > 0 ? `LOG-${Date.now()}` : null;
@@ -65,4 +72,13 @@ const getTeacherResults = asyncHandler(async (req, res) => {
   res.json(results);
 });
 
-export { createResult, getResultById, getTeacherResults };
+// @desc    Get current student's own results
+// @route   GET /api/results/my
+// @access  Private/Student
+const getMyResults = asyncHandler(async (req, res) => {
+  const results = await Result.find({ student: req.user._id })
+    .populate('exam', 'title duration');
+  res.json(results);
+});
+
+export { createResult, getResultById, getTeacherResults, getMyResults };

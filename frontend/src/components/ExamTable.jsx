@@ -48,23 +48,44 @@ const ExamTable = ({ exams, resultsData }) => {
                   />
                 </TableCell>
                 <TableCell align="center">
-                  <Button 
-                    variant="contained" 
-                    size="small"
-                    onClick={() => navigate(`/verify-face`, { state: { examId: exam._id } })}
-                    disabled={isCompleted}
-                    sx={{ 
-                      borderRadius: '6px', 
-                      textTransform: 'none', 
-                      fontWeight: 600,
-                      px: 3,
-                      bgcolor: isCompleted ? '#bdbdbd' : '#4f46e5',
-                      '&:hover': { bgcolor: isCompleted ? '#bdbdbd' : '#4338ca' },
-                      boxShadow: 'none'
-                    }}
-                  >
-                    Start Exam
-                  </Button>
+                  {isCompleted ? (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      disableRipple
+                      sx={{
+                        borderRadius: '6px',
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        px: 3,
+                        bgcolor: '#16a34a',
+                        color: '#ffffff',
+                        pointerEvents: 'none',
+                        boxShadow: 'none',
+                        '&:hover': { bgcolor: '#16a34a' },
+                      }}
+                    >
+                      ✓ Submitted
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="contained"
+                      size="small"
+                      onClick={() => navigate(`/verify-face`, { state: { examId: exam._id } })}
+                      sx={{
+                        borderRadius: '6px',
+                        textTransform: 'none',
+                        fontWeight: 700,
+                        px: 3,
+                        bgcolor: '#4f46e5',
+                        color: '#ffffff',
+                        boxShadow: 'none',
+                        '&:hover': { bgcolor: '#4338ca' },
+                      }}
+                    >
+                      Start Exam
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             )

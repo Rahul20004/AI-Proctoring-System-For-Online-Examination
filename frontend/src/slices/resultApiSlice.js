@@ -22,7 +22,13 @@ export const resultApiSlice = apiSlice.injectEndpoints({
       }),
       keepUnusedDataFor: 5,
     }),
+    getMyResults: builder.query({
+      query: () => ({
+        url: `${RESULTS_URL}/my`,
+      }),
+      keepUnusedDataFor: 5,
+    }),
   }),
 });
 
-export const { useCreateResultMutation, useGetResultQuery, useGetTeacherResultsQuery } = resultApiSlice;
+export const { useCreateResultMutation, useGetResultQuery, useGetTeacherResultsQuery, useGetMyResultsQuery } = resultApiSlice;

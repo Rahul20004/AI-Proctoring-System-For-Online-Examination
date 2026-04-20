@@ -21,9 +21,13 @@ const TakeExamScreen = () => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState({});
   const [timeSpent, setTimeSpent] = useState([]);
-  const [currentTimer, setCurrentTimer] = useState(0);
   const [cheatLogs, setCheatLogs] = useState([]);
   const [modelsLoaded, setModelsLoaded] = useState(false);
+
+  // Per-question countdown timer
+  const [timeLeft, setTimeLeft] = useState(0);       // seconds remaining for current question
+  const [timePerQuestion, setTimePerQuestion] = useState(0); // total seconds allocated per question
+  const startTimeRef = useRef(Date.now());            // wall-clock start of current question
 
   const webcamRef = useRef(null);
   const canvasRef = useRef(null);
@@ -130,44 +134,50 @@ const TakeExamScreen = () => {
   }, [exam, timeSpent, currentQuestionIndex]);
 
 
-  // Timer configuration
-  const [timeLeft, setTimeLeft] = useState(0);
-  const startTimeRef = useRef(Date.now());
+  // ── Per-Question Timer (merged, ref-based) ───────────────────────────────
+  // Single effect so there is NO stale-closure gap between "set time" and
+  // "start interval". timeLeftRef keeps the interval callback in sync with
+  // the live countdown value without needing it as a dependency.
+  const timeLeftRef = useRef(0);
 
-  // Setup timer per question
-  useEffect(() => {
-    if (exam && exam.timerMode === 'per_question') {
-      setTimeLeft(exam.durationPerQuestion || 60); // default to 60s if not set
-      startTimeRef.current = Date.now();
-    } else if (exam) {
-      startTimeRef.current = Date.now();
-      setCurrentTimer(0);
-    }
-  }, [currentQuestionIndex, exam]);
-
-  // Main timer countdown loop
   useEffect(() => {
     if (!exam) return;
 
-    if (exam.timerMode === 'per_question') {
-      const timerId = setInterval(() => {
-        setTimeLeft(t => {
-          if (t <= 1) {
-            clearInterval(timerId);
-            handleTimeout();
-            return 0;
-          }
-          return t - 1;
-        });
-      }, 1000);
-      return () => clearInterval(timerId);
-    } else {
-      const timerId = setInterval(() => {
-        setCurrentTimer(t => t + 1);
-      }, 1000);
-      return () => clearInterval(timerId);
-    }
-  }, [currentQuestionIndex, exam]);
+    // Equal time slice for every question
+    const totalSeconds  = (exam.duration || 10) * 60;
+    const questionCount = exam.questions?.length || 1;
+    const perQ          = Math.floor(totalSeconds / questionCount);
+
+    // Initialise state + ref together – both see the same value immediately
+    timeLeftRef.current = perQ;
+    setTimePerQuestion(perQ);
+    setTimeLeft(perQ);
+    startTimeRef.current = Date.now();
+
+    console.log(`[Timer] Q${currentQuestionIndex + 1} started: ${perQ}s  (${exam.duration}min ÷ ${questionCount}q)`);
+
+    // Interval reads from ref → never stale, never pauses
+    const timerId = setInterval(() => {
+      timeLeftRef.current -= 1;
+      const remaining = timeLeftRef.current;
+
+      setTimeLeft(remaining); // keep UI in sync
+
+      if (remaining <= 0) {
+        clearInterval(timerId);
+        console.log(`[Timer] Q${currentQuestionIndex + 1} expired – auto-advancing`);
+        handleTimeout();
+      }
+    }, 1000);
+
+    // Cleanup when question changes or component unmounts
+    return () => clearInterval(timerId);
+
+  // handleTimeout is defined below but is stable across renders (no deps that change)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exam, currentQuestionIndex]);
+
+
 
   // Auto-submit timeout handler
   const handleTimeout = () => {
@@ -417,14 +427,49 @@ const TakeExamScreen = () => {
       <Grid container spacing={4}>
         <Grid item xs={12} md={8}>
           <Paper elevation={3} sx={{ p: 4, minHeight: '60vh', display: 'flex', flexDirection: 'column' }}>
-            <Box display="flex" justifyContent="space-between" mb={2}>
-              <Typography variant="h6">Question {currentQuestionIndex + 1} of {exam.questions.length}</Typography>
-              <Typography 
-                variant="h6" 
-                color={exam.timerMode === 'per_question' && timeLeft <= 5 ? 'error' : 'secondary'}
-              >
-                {exam.timerMode === 'per_question' ? `Time Left: ${timeLeft}s` : `Timer: ${currentTimer}s`}
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+              <Typography variant="h6">
+                Question {currentQuestionIndex + 1} of {exam.questions.length}
               </Typography>
+
+              {/* Per-question countdown in MM:SS */}
+              {(() => {
+                const mins = Math.floor(timeLeft / 60);
+                const secs = timeLeft % 60;
+                const pct  = timePerQuestion > 0 ? (timeLeft / timePerQuestion) * 100 : 100;
+                const isUrgent = timeLeft <= 10;
+                return (
+                  <Box textAlign="right">
+                    <Typography
+                      variant="h6"
+                      fontWeight={700}
+                      color={isUrgent ? 'error' : 'secondary'}
+                      sx={{ fontFamily: 'monospace', letterSpacing: 2 }}
+                    >
+                      {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
+                    </Typography>
+                    {/* thin progress bar */}
+                    <Box
+                      sx={{
+                        height: 4,
+                        borderRadius: 2,
+                        bgcolor: '#eee',
+                        mt: 0.5,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          height: '100%',
+                          width: `${pct}%`,
+                          bgcolor: isUrgent ? '#e53935' : pct < 50 ? '#ff9800' : '#4caf50',
+                          transition: 'width 1s linear, background-color 0.3s',
+                        }}
+                      />
+                    </Box>
+                  </Box>
+                );
+              })()}
             </Box>
             
             <Typography variant="h5" mb={4}>{question.questionText}</Typography>

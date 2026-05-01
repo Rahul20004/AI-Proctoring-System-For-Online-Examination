@@ -8,6 +8,7 @@ import { useGetMyResultsQuery } from '../slices/resultApiSlice';
 import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import ExamTable from '../components/ExamTable';
+import QuestionsPreviewModal from '../components/QuestionsPreviewModal';
 
 const DashboardScreen = () => {
   const { userInfo } = useSelector((state) => state.auth);
@@ -19,6 +20,17 @@ const DashboardScreen = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('All');
+
+  const [selectedResult, setSelectedResult] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const handleOpenModal = (examId) => {
+    const result = myResults?.find(r => r.exam?._id === examId);
+    if (result) {
+      setSelectedResult(result);
+      setModalOpen(true);
+    }
+  };
 
   useEffect(() => {
     // If the data was wiped by the memory server, it helps to refetch
@@ -124,7 +136,7 @@ const DashboardScreen = () => {
           ) : error ? (
             <Typography color="error" mt={3} fontWeight={600}>Failed to load exams automatically. (Server may have restarted).</Typography>
           ) : filteredExams.length > 0 ? (
-             <ExamTable exams={filteredExams} resultsData={myResults} />
+             <ExamTable exams={filteredExams} resultsData={myResults} onRowClick={handleOpenModal} />
           ) : (
              <Paper sx={{ p: 5, borderRadius: '16px', textAlign: 'center', bgcolor: '#ffffff', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', mt: 3, border: '1px dashed #e0e0e0' }}>
                <Typography variant="h6" sx={{ color: '#2c3e50', fontWeight: 600 }}>
@@ -138,6 +150,15 @@ const DashboardScreen = () => {
 
         </Container>
       </Box>
+
+      {/* Modal */}
+      {selectedResult && (
+        <QuestionsPreviewModal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          result={selectedResult}
+        />
+      )}
     </Box>
   );
 };

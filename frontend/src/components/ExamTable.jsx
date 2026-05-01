@@ -1,7 +1,7 @@
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button, Chip } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
-const ExamTable = ({ exams, resultsData }) => {
+const ExamTable = ({ exams, resultsData, onRowClick }) => {
   const navigate = useNavigate();
 
   return (
@@ -25,8 +25,10 @@ const ExamTable = ({ exams, resultsData }) => {
             return (
               <TableRow 
                 key={exam._id}
+                onClick={() => isCompleted && onRowClick(exam._id)}
                 sx={{ 
-                  '&:hover': { bgcolor: '#f9fafb' }, 
+                  cursor: isCompleted ? 'pointer' : 'default',
+                  '&:hover': { bgcolor: isCompleted ? '#f9fafb' : 'inherit' }, 
                   transition: 'all 0.2s ease', 
                   '&:last-child td, &:last-child th': { border: 0 } 
                 }}
@@ -53,6 +55,7 @@ const ExamTable = ({ exams, resultsData }) => {
                       variant="contained"
                       size="small"
                       disableRipple
+                      onClick={(e) => e.stopPropagation()}
                       sx={{
                         borderRadius: '6px',
                         textTransform: 'none',
@@ -71,7 +74,10 @@ const ExamTable = ({ exams, resultsData }) => {
                     <Button
                       variant="contained"
                       size="small"
-                      onClick={() => navigate(`/verify-face`, { state: { examId: exam._id } })}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/verify-face`, { state: { examId: exam._id } });
+                      }}
                       sx={{
                         borderRadius: '6px',
                         textTransform: 'none',

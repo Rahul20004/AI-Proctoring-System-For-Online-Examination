@@ -44,6 +44,10 @@ const TakeExamScreen = () => {
   const TAB_SWITCH_LIMIT   = 2;           // max allowed switches before auto-submit
   const [tabSwitchCount, setTabSwitchCount] = useState(0); // for UI display
 
+  // Strict Face Detection Tracking
+  const lastFaceSeenRef = useRef(Date.now());
+  const [faceWarning, setFaceWarning] = useState(false);
+
   // Initialize Exam
   useEffect(() => {
     if (examList) {
@@ -334,30 +338,37 @@ const TakeExamScreen = () => {
         eventTitle = '⚠️ Suspicious Object Detected';
       }
 
-      // ── Face Proctoring – stability-gated ───────────────────────────────
-      if (detections.length === 0) {
-        noFaceCountRef.current += 1;
-        multiFaceCountRef.current = 0; // reset the other counter
-        console.log(`[Proctor] No face detected – consecutive misses: ${noFaceCountRef.current}/${FACE_MISS_THRESHOLD}`);
-
-        if (noFaceCountRef.current >= FACE_MISS_THRESHOLD) {
-          // Confirmed absence over multiple frames
-          eventTitle = 'Face Not Visible';
-          // Don't reset yet – keep alerting every N frames until face returns
+      // ── Face Proctoring – Strict Mode ───────────────────────────────
+      let faceVisible = false;
+      const MIN_WIDTH = videoWidth * 0.15; // e.g. 15% of frame
+      const MIN_HEIGHT = videoHeight * 0.15;
+      
+      if (detections && detections.length > 0) {
+        const detection = detections[0];
+        const faceBox = detection.box;
+        
+        if (detection.score >= 0.6 && faceBox.width >= MIN_WIDTH && faceBox.height >= MIN_HEIGHT) {
+          faceVisible = true;
         }
-      } else if (detections.length > 1) {
-        multiFaceCountRef.current += 1;
-        noFaceCountRef.current = 0;
-        console.log(`[Proctor] Multiple faces (${detections.length}) – consecutive: ${multiFaceCountRef.current}/${FACE_MISS_THRESHOLD}`);
+      }
 
-        if (multiFaceCountRef.current >= FACE_MISS_THRESHOLD) {
+      if (faceVisible) {
+        lastFaceSeenRef.current = Date.now();
+        if (faceWarning) setFaceWarning(false);
+      } else {
+        if (Date.now() - lastFaceSeenRef.current > 1500) {
+          eventTitle = 'Face Not Visible';
+          if (!faceWarning) setFaceWarning(true);
+        }
+      }
+
+      if (detections.length > 1) {
+        multiFaceCountRef.current += 1;
+        if (multiFaceCountRef.current >= 3) {
           eventTitle = 'Multiple Faces Detected';
         }
       } else {
-        // Exactly one face – all good, reset both counters
-        noFaceCountRef.current   = 0;
         multiFaceCountRef.current = 0;
-        console.log('[Proctor] ✅ Face Visible – counters reset');
       }
 
       if (eventTitle) {
@@ -371,7 +382,7 @@ const TakeExamScreen = () => {
 
   useEffect(() => {
     if (!modelsLoaded) return;
-    const intervalId = setInterval(detectCheating, 3000);
+    const intervalId = setInterval(detectCheating, 500);
     return () => clearInterval(intervalId);
   }, [modelsLoaded, detectCheating]);
 
@@ -573,6 +584,13 @@ const TakeExamScreen = () => {
               <Typography variant="subtitle1" fontWeight="600" mb={2} color="#ef4444">
                 Proctoring Active
               </Typography>
+              {faceWarning && (
+                <Box sx={{ bgcolor: '#fee2e2', color: '#b91c1c', p: 1.5, borderRadius: 2, mb: 2, border: '1px solid #f87171' }}>
+                  <Typography variant="body2" fontWeight="bold">
+                    ⚠ Face Not Visible. Please stay in frame.
+                  </Typography>
+                </Box>
+              )}
               <Box position="relative">
                 {!modelsLoaded && (
                   <Box position="absolute" top="50%" left="50%" sx={{ transform: 'translate(-50%, -50%)', zIndex: 10, bgcolor: 'rgba(255,255,255,0.8)', p: 2, borderRadius: 2 }}>

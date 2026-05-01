@@ -11,6 +11,33 @@ import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import StudentDetailModal from '../components/StudentDetailModal';
 
+const inputSx = {
+  backgroundColor: '#ffffff',
+  borderRadius: '10px',
+  '& input:-webkit-autofill': {
+    WebkitBoxShadow: '0 0 0px 1000px #ffffff inset !important',
+    WebkitTextFillColor: '#111827 !important',
+  },
+  '& .MuiInputBase-input': {
+    color: '#111827',
+    '&::placeholder': { color: '#9ca3af', opacity: 1 },
+  },
+  '& .MuiInputLabel-root': { color: '#666' },
+  '& .MuiOutlinedInput-root': {
+    backgroundColor: '#ffffff',
+    borderRadius: '10px',
+    transition: 'all 0.2s ease',
+    '& fieldset': { borderColor: '#e5e7eb', transition: 'all 0.2s ease' },
+    '&:hover fieldset': { borderColor: '#cbd5f5' },
+    '&.Mui-focused fieldset': { 
+      borderColor: '#7c3aed', 
+      borderWidth: '2px', 
+      boxShadow: '0 0 0 2px rgba(124, 58, 237, 0.15)' 
+    }
+  },
+  '& .MuiSelect-select': { color: '#111827' }
+};
+
 const TeacherDashboardScreen = () => {
   const { userInfo } = useSelector((state) => state.auth);
   const { data: exams, isLoading: loadingExams, refetch: refetchExams } = useGetExamsQuery(undefined, { refetchOnMountOrArgChange: true });
@@ -82,9 +109,9 @@ const TeacherDashboardScreen = () => {
               <Paper sx={{ p: 4, borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', bgcolor: '#ffffff' }}>
                 <Typography variant="h6" sx={{ color: '#2c3e50', fontWeight: 600, mb: 3 }}>AI Question Generator</Typography>
                 <TextField fullWidth label="Topic (e.g. JavaScript Arrays)" margin="normal" value={topic} onChange={(e) => setTopic(e.target.value)}
-                  sx={{ input: { color: '#333' }, '& .MuiInputLabel-root': { color: '#666' }, '& .MuiOutlinedInput-root': { borderRadius: '10px', '& fieldset': { borderColor: '#ddd' }, '&:hover fieldset': { borderColor: '#6c63ff' }, '&.Mui-focused fieldset': { borderColor: '#6c63ff', boxShadow: '0 0 0 4px rgba(108,99,255,0.1)' } } }} />
+                  sx={inputSx} />
 
-                <FormControl fullWidth margin="normal" sx={{ '& .MuiInputLabel-root': { color: '#666' }, '& .MuiOutlinedInput-root': { borderRadius: '10px', '& fieldset': { borderColor: '#ddd' }, '&:hover fieldset': { borderColor: '#6c63ff' }, '&.Mui-focused fieldset': { borderColor: '#6c63ff', boxShadow: '0 0 0 4px rgba(108,99,255,0.1)' } }, '& .MuiSelect-select': { color: '#333' } }}>
+                <FormControl fullWidth margin="normal" sx={inputSx}>
                   <InputLabel id="difficulty-label">Difficulty</InputLabel>
                   <Select labelId="difficulty-label" value={difficulty} label="Difficulty" onChange={(e) => setDifficulty(e.target.value)} sx={{ borderRadius: '10px' }}>
                     <MenuItem value="Easy">Easy</MenuItem>
@@ -94,7 +121,7 @@ const TeacherDashboardScreen = () => {
                 </FormControl>
 
                 <TextField fullWidth label="Number of Questions" type="number" margin="normal" value={numQuestions} onChange={(e) => setNumQuestions(e.target.value)}
-                  sx={{ input: { color: '#333' }, '& .MuiInputLabel-root': { color: '#666' }, '& .MuiOutlinedInput-root': { borderRadius: '10px', '& fieldset': { borderColor: '#ddd' }, '&:hover fieldset': { borderColor: '#6c63ff' }, '&.Mui-focused fieldset': { borderColor: '#6c63ff', boxShadow: '0 0 0 4px rgba(108,99,255,0.1)' } } }} />
+                  sx={inputSx} />
 
                 <Button variant="contained" fullWidth sx={{ mt: 3, py: 1.5, borderRadius: '10px', textTransform: 'none', fontSize: '1rem', fontWeight: 600, color: '#ffffff', background: 'linear-gradient(135deg, #6c63ff, #7f53ac)', '&:hover': { background: 'linear-gradient(135deg, #5b54e5, #6a459b)', transform: 'translateY(-2px)', boxShadow: '0 6px 20px rgba(108,99,255,0.4)' }, transition: 'all 0.3s ease' }} onClick={handleGenerate} disabled={isGenerating}>
                   {isGenerating ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Generate Questions'}
@@ -107,11 +134,11 @@ const TeacherDashboardScreen = () => {
               <Paper sx={{ p: 4, borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', bgcolor: '#ffffff' }}>
                 <Typography variant="h6" sx={{ color: '#2c3e50', fontWeight: 600, mb: 3 }}>Create Exam</Typography>
                 <TextField fullWidth label="Exam Title" margin="normal" value={title} onChange={(e) => setTitle(e.target.value)}
-                  sx={{ input: { color: '#333' }, '& .MuiInputLabel-root': { color: '#666' }, '& .MuiOutlinedInput-root': { borderRadius: '10px', '& fieldset': { borderColor: '#ddd' }, '&:hover fieldset': { borderColor: '#6c63ff' }, '&.Mui-focused fieldset': { borderColor: '#6c63ff', boxShadow: '0 0 0 4px rgba(108,99,255,0.1)' } } }} />
+                  sx={inputSx} />
                 <TextField fullWidth label="Description" margin="normal" value={description} onChange={(e) => setDescription(e.target.value)}
-                  sx={{ input: { color: '#333' }, '& .MuiInputLabel-root': { color: '#666' }, '& .MuiOutlinedInput-root': { borderRadius: '10px', '& fieldset': { borderColor: '#ddd' }, '&:hover fieldset': { borderColor: '#6c63ff' }, '&.Mui-focused fieldset': { borderColor: '#6c63ff', boxShadow: '0 0 0 4px rgba(108,99,255,0.1)' } } }} />
+                  sx={inputSx} />
                 <TextField fullWidth label="Duration (minutes)" type="number" margin="normal" value={duration} onChange={(e) => setDuration(e.target.value)}
-                  sx={{ input: { color: '#333' }, '& .MuiInputLabel-root': { color: '#666' }, '& .MuiOutlinedInput-root': { borderRadius: '10px', '& fieldset': { borderColor: '#ddd' }, '&:hover fieldset': { borderColor: '#6c63ff' }, '&.Mui-focused fieldset': { borderColor: '#6c63ff', boxShadow: '0 0 0 4px rgba(108,99,255,0.1)' } } }} />
+                  sx={inputSx} />
                 <Typography variant="body2" mt={2} sx={{ color: '#666', fontWeight: 500 }}>
                   Questions prepared: {generatedQuestions.length}
                 </Typography>

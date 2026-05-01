@@ -410,7 +410,8 @@ const TakeExamScreen = () => {
         score,
         totalQuestions: exam.questions.length,
         timeSpentPerQuestion: finalTimeSpentData,
-        cheatLogs
+        cheatLogs,
+        selectedAnswers // send per-question answers for the Questions Preview modal
       }).unwrap();
       navigate('/');
     } catch (err) {

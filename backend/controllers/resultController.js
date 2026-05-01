@@ -6,7 +6,7 @@ import Exam from '../models/Exam.js';
 // @route   POST /api/results
 // @access  Private/Student
 const createResult = asyncHandler(async (req, res) => {
-  const { examId, score, totalQuestions, timeSpentPerQuestion, cheatLogs } = req.body;
+  const { examId, score, totalQuestions, timeSpentPerQuestion, cheatLogs, selectedAnswers } = req.body;
 
   // Block re-attempt: student can only submit once per exam
   const existing = await Result.findOne({ student: req.user._id, exam: examId });
@@ -25,6 +25,7 @@ const createResult = asyncHandler(async (req, res) => {
     score,
     totalQuestions,
     timeSpentPerQuestion,
+    selectedAnswers: selectedAnswers || {},
     cheatLogs,
     reportSummary,
     cheatingLogId
@@ -41,7 +42,7 @@ const createResult = asyncHandler(async (req, res) => {
 const getResultById = asyncHandler(async (req, res) => {
   const result = await Result.findById(req.params.id)
     .populate('student', 'name email')
-    .populate('exam', 'title duration');
+    .populate('exam', 'title duration questions');
 
   if (result) {
     // Only teacher or the student who owns the result can view it
@@ -66,7 +67,7 @@ const getTeacherResults = asyncHandler(async (req, res) => {
   
   const results = await Result.find({ exam: { $in: examIds } })
     .populate('student', 'name email')
-    .populate('exam', 'title duration');
+    .populate('exam', 'title duration questions');
     
   console.log(`API response: Fetched ${results.length} student results for teacher ${req.params.teacherId}`);
   res.json(results);
@@ -77,7 +78,7 @@ const getTeacherResults = asyncHandler(async (req, res) => {
 // @access  Private/Student
 const getMyResults = asyncHandler(async (req, res) => {
   const results = await Result.find({ student: req.user._id })
-    .populate('exam', 'title duration');
+    .populate('exam', 'title duration questions');
   res.json(results);
 });
 

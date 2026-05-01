@@ -22,6 +22,7 @@ const resultSchema = mongoose.Schema({
     questionIndex: Number,
     timeSpent: Number // in seconds
   }],
+  selectedAnswers: { type: Map, of: String, default: {} }, // key = questionIndex, value = selected option text
   cheatLogs: [cheatLogSchema],
   reportSummary: { type: String },
   cheatingLogId: { type: String },

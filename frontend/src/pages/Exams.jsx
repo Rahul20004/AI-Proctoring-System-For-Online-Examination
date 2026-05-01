@@ -10,7 +10,7 @@ import Topbar from '../components/Topbar';
 import ExamTable from '../components/ExamTable';
 import QuestionsPreviewModal from '../components/QuestionsPreviewModal';
 
-const DashboardScreen = () => {
+const Exams = () => {
   const { userInfo } = useSelector((state) => state.auth);
   const navigate = useNavigate();
   const theme = useTheme();
@@ -48,18 +48,14 @@ const DashboardScreen = () => {
   }) : [];
 
   return (
-    <Box sx={{ display: 'flex', bgcolor: '#f5f6fa', minHeight: '100vh' }}>
-      <Sidebar />
-      <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        <Topbar />
-        
-        <Container maxWidth="lg" sx={{ mt: 4, mb: 4, px: { xs: 2, md: 4 } }}>
+    <>
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4, px: { xs: 2, md: 4 } }}>
           <Box mb={4}>
             <Typography variant="h4" sx={{ color: '#2c3e50', fontWeight: 800, mb: 1 }}>
-              Dashboard
+              Exams
             </Typography>
             <Typography variant="body1" sx={{ color: '#666', fontWeight: 500 }}>
-              Track your available exams and start them immediately.
+              View and take your available exams
             </Typography>
           </Box>
 
@@ -149,8 +145,6 @@ const DashboardScreen = () => {
           )}
 
         </Container>
-      </Box>
-
       {/* Modal */}
       {selectedResult && (
         <QuestionsPreviewModal
@@ -159,8 +153,8 @@ const DashboardScreen = () => {
           result={selectedResult}
         />
       )}
-    </Box>
+    </>
   );
 };
 
-export default DashboardScreen;
+export default Exams;

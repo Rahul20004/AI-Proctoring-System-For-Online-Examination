@@ -46,7 +46,7 @@ const TakeExamScreen = () => {
 
   // Strict Face Detection Tracking
   const lastFaceSeenRef = useRef(Date.now());
-  const [faceWarning, setFaceWarning] = useState(false);
+  const [faceVisible, setFaceVisible] = useState(true);
 
   // Initialize Exam
   useEffect(() => {
@@ -338,27 +338,14 @@ const TakeExamScreen = () => {
         eventTitle = '⚠️ Suspicious Object Detected';
       }
 
-      // ── Face Proctoring – Strict Mode ───────────────────────────────
-      let faceVisible = false;
-      const MIN_WIDTH = videoWidth * 0.15; // e.g. 15% of frame
-      const MIN_HEIGHT = videoHeight * 0.15;
-      
-      if (detections && detections.length > 0) {
-        const detection = detections[0];
-        const faceBox = detection.box;
-        
-        if (detection.score >= 0.6 && faceBox.width >= MIN_WIDTH && faceBox.height >= MIN_HEIGHT) {
-          faceVisible = true;
-        }
-      }
-
-      if (faceVisible) {
+      // ── Face Proctoring – Smooth Logic ───────────────────────────────
+      if (detections.length > 0 && detections.some(d => d.score > 0.5)) {
         lastFaceSeenRef.current = Date.now();
-        if (faceWarning) setFaceWarning(false);
+        setFaceVisible(true);
       } else {
-        if (Date.now() - lastFaceSeenRef.current > 1500) {
+        if (Date.now() - lastFaceSeenRef.current > 2000) {
+          setFaceVisible(false);
           eventTitle = 'Face Not Visible';
-          if (!faceWarning) setFaceWarning(true);
         }
       }
 
@@ -584,7 +571,7 @@ const TakeExamScreen = () => {
               <Typography variant="subtitle1" fontWeight="600" mb={2} color="#ef4444">
                 Proctoring Active
               </Typography>
-              {faceWarning && (
+              {(!faceVisible) && (
                 <Box sx={{ bgcolor: '#fee2e2', color: '#b91c1c', p: 1.5, borderRadius: 2, mb: 2, border: '1px solid #f87171' }}>
                   <Typography variant="body2" fontWeight="bold">
                     ⚠ Face Not Visible. Please stay in frame.

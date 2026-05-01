@@ -424,129 +424,202 @@ const TakeExamScreen = () => {
   const question = exam.questions[currentQuestionIndex];
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4 }}>
-      <Grid container spacing={4}>
-        <Grid item xs={12} md={8}>
-          <Paper elevation={3} sx={{ p: 4, minHeight: '60vh', display: 'flex', flexDirection: 'column' }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-              <Typography variant="h6">
-                Question {currentQuestionIndex + 1} of {exam.questions.length}
-              </Typography>
+    <Box sx={{ minHeight: '100vh', bgcolor: '#ffffff', py: 4 }}>
+      <Container maxWidth="lg">
+        <Grid container spacing={4}>
+          <Grid item xs={12} md={8}>
+            <Paper elevation={0} sx={{ p: 4, minHeight: '60vh', display: 'flex', flexDirection: 'column', bgcolor: '#ffffff', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)', border: '1px solid #f3f4f6' }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={3} pb={2} sx={{ borderBottom: '1px solid #e5e7eb' }}>
+                <Typography variant="h6" sx={{ color: '#6b7280', fontWeight: 600 }}>
+                  Question {currentQuestionIndex + 1} of {exam.questions.length}
+                </Typography>
 
-              {/* Per-question countdown in MM:SS */}
-              {(() => {
-                const mins = Math.floor(timeLeft / 60);
-                const secs = timeLeft % 60;
-                const pct  = timePerQuestion > 0 ? (timeLeft / timePerQuestion) * 100 : 100;
-                const isUrgent = timeLeft <= 10;
-                return (
-                  <Box textAlign="right">
-                    <Typography
-                      variant="h6"
-                      fontWeight={700}
-                      color={isUrgent ? 'error' : 'secondary'}
-                      sx={{ fontFamily: 'monospace', letterSpacing: 2 }}
-                    >
-                      {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
-                    </Typography>
-                    {/* thin progress bar */}
-                    <Box
-                      sx={{
-                        height: 4,
-                        borderRadius: 2,
-                        bgcolor: '#eee',
-                        mt: 0.5,
-                        overflow: 'hidden',
-                      }}
-                    >
+                {/* Per-question countdown in MM:SS */}
+                {(() => {
+                  const mins = Math.floor(timeLeft / 60);
+                  const secs = timeLeft % 60;
+                  const pct  = timePerQuestion > 0 ? (timeLeft / timePerQuestion) * 100 : 100;
+                  const isUrgent = timeLeft <= 10;
+                  return (
+                    <Box textAlign="right">
+                      <Typography
+                        variant="h6"
+                        fontWeight={700}
+                        sx={{ fontFamily: 'monospace', letterSpacing: 2, color: isUrgent ? '#ef4444' : '#6b7280' }}
+                      >
+                        {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
+                      </Typography>
+                      {/* thin progress bar */}
                       <Box
                         sx={{
-                          height: '100%',
-                          width: `${pct}%`,
-                          bgcolor: isUrgent ? '#e53935' : pct < 50 ? '#ff9800' : '#4caf50',
-                          transition: 'width 1s linear, background-color 0.3s',
+                          height: 4,
+                          borderRadius: 2,
+                          bgcolor: '#f3f4f6',
+                          mt: 0.5,
+                          overflow: 'hidden',
                         }}
+                      >
+                        <Box
+                          sx={{
+                            height: '100%',
+                            width: `${pct}%`,
+                            bgcolor: isUrgent ? '#ef4444' : pct < 50 ? '#f59e0b' : '#10b981',
+                            transition: 'width 1s linear, background-color 0.3s',
+                          }}
+                        />
+                      </Box>
+                    </Box>
+                  );
+                })()}
+              </Box>
+              
+              <Typography variant="h5" mb={4} sx={{ color: '#111827', fontWeight: 600 }}>
+                {question.questionText}
+              </Typography>
+              
+              <RadioGroup 
+                value={selectedAnswers[currentQuestionIndex] || ''} 
+                onChange={(e) => setSelectedAnswers({...selectedAnswers, [currentQuestionIndex]: e.target.value})}
+                sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+              >
+                {question.options.map((opt, i) => {
+                  const isSelected = selectedAnswers[currentQuestionIndex] === opt;
+                  const optionLetter = String.fromCharCode(65 + i);
+                  
+                  return (
+                    <Box
+                      key={i}
+                      sx={{
+                        border: '1px solid',
+                        borderColor: isSelected ? '#7c3aed' : '#e5e7eb',
+                        bgcolor: isSelected ? '#ede9fe' : '#ffffff',
+                        borderRadius: '8px',
+                        transition: 'all 0.2s',
+                        '&:hover': {
+                          bgcolor: isSelected ? '#ede9fe' : '#f3f4f6'
+                        }
+                      }}
+                    >
+                      <FormControlLabel 
+                        value={opt} 
+                        control={<Radio sx={{ color: '#9ca3af', '&.Mui-checked': { color: '#7c3aed' } }} />} 
+                        label={
+                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Typography sx={{ fontWeight: 'bold', mr: 1, color: isSelected ? '#7c3aed' : '#4b5563' }}>
+                              {optionLetter}.
+                            </Typography>
+                            <Typography sx={{ color: '#374151', fontWeight: isSelected ? 600 : 400 }}>
+                              {opt}
+                            </Typography>
+                          </Box>
+                        } 
+                        sx={{ width: '100%', m: 0, px: 2, py: 1.5 }}
                       />
                     </Box>
+                  );
+                })}
+              </RadioGroup>
+
+              <Box mt="auto" pt={4} display="flex" justifyContent="flex-end">
+                {currentQuestionIndex < exam.questions.length - 1 ? (
+                  <Button 
+                    variant="contained" 
+                    onClick={handleNext}
+                    sx={{
+                      background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                      color: '#fff',
+                      fontWeight: 600,
+                      px: 4,
+                      py: 1.5,
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        filter: 'brightness(1.1)',
+                        boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)'
+                      }
+                    }}
+                  >
+                    Next Question
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="contained" 
+                    onClick={handleSubmit}
+                    sx={{
+                      background: 'linear-gradient(135deg, #7c3aed, #6d28d9)',
+                      color: '#fff',
+                      fontWeight: 600,
+                      px: 4,
+                      py: 1.5,
+                      borderRadius: '8px',
+                      textTransform: 'none',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        filter: 'brightness(1.1)',
+                        boxShadow: '0 4px 12px rgba(124, 58, 237, 0.3)'
+                      }
+                    }}
+                  >
+                    Submit Exam
+                  </Button>
+                )}
+              </Box>
+            </Paper>
+          </Grid>
+
+          <Grid item xs={12} md={4}>
+            <Paper elevation={0} sx={{ p: 3, bgcolor: '#ffffff', borderRadius: '12px', border: '1px solid #e5e7eb', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+              <Typography variant="subtitle1" fontWeight="600" mb={2} color="#ef4444">
+                Proctoring Active
+              </Typography>
+              <Box position="relative">
+                {!modelsLoaded && (
+                  <Box position="absolute" top="50%" left="50%" sx={{ transform: 'translate(-50%, -50%)', zIndex: 10, bgcolor: 'rgba(255,255,255,0.8)', p: 2, borderRadius: 2 }}>
+                    <CircularProgress size={24} sx={{ color: '#7c3aed' }} />
+                    <Typography variant="caption" display="block" sx={{ mt: 1, color: '#374151' }}>Loading AI...</Typography>
                   </Box>
-                );
-              })()}
-            </Box>
-            
-            <Typography variant="h5" mb={4}>{question.questionText}</Typography>
-            
-            <RadioGroup 
-              value={selectedAnswers[currentQuestionIndex] || ''} 
-              onChange={(e) => setSelectedAnswers({...selectedAnswers, [currentQuestionIndex]: e.target.value})}
-            >
-              {question.options.map((opt, i) => (
-                <FormControlLabel key={i} value={opt} control={<Radio />} label={opt} />
-              ))}
-            </RadioGroup>
-
-            <Box mt="auto" display="flex" justifyContent="flex-end">
-              {currentQuestionIndex < exam.questions.length - 1 ? (
-                <Button variant="contained" onClick={handleNext}>Next Question</Button>
-              ) : (
-                <Button variant="contained" color="secondary" onClick={handleSubmit}>Submit Exam</Button>
-              )}
-            </Box>
-          </Paper>
+                )}
+                <Webcam
+                  ref={webcamRef}
+                  audio={false}
+                  screenshotFormat="image/jpeg"
+                  width="100%"
+                  style={{ borderRadius: '8px', border: '2px solid #ef4444' }}
+                />
+                <canvas
+                  ref={canvasRef}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    pointerEvents: 'none',
+                    borderRadius: '8px'
+                  }}
+                />
+              </Box>
+              <Box mt={3} pt={2} sx={{ borderTop: '1px solid #e5e7eb' }}>
+                <Typography variant="body2" sx={{ color: '#6b7280', fontWeight: 500, mb: 1 }}>
+                  Warnings logged: {cheatLogs.length}
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 600,
+                    color: tabSwitchCount >= TAB_SWITCH_LIMIT ? '#ef4444' : tabSwitchCount > 0 ? '#f59e0b' : '#10b981',
+                  }}
+                >
+                  Tab switches: {tabSwitchCount} / {TAB_SWITCH_LIMIT}
+                  {tabSwitchCount >= TAB_SWITCH_LIMIT && ' — ⚠️ Next switch = Auto Submit'}
+                </Typography>
+              </Box>
+            </Paper>
+          </Grid>
         </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Paper elevation={3} sx={{ p: 2 }}>
-            <Typography variant="subtitle1" fontWeight="bold" mb={2} color="error">
-              Proctoring Active
-            </Typography>
-            <Box position="relative">
-              {!modelsLoaded && (
-                <Box position="absolute" top="50%" left="50%" sx={{ transform: 'translate(-50%, -50%)' }}>
-                  <CircularProgress size={24} />
-                  <Typography variant="caption" display="block">Loading AI...</Typography>
-                </Box>
-              )}
-              <Webcam
-                ref={webcamRef}
-                audio={false}
-                screenshotFormat="image/jpeg"
-                width="100%"
-                style={{ borderRadius: '8px', border: '2px solid red' }}
-              />
-              <canvas
-                ref={canvasRef}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '100%',
-                  pointerEvents: 'none',
-                  borderRadius: '8px'
-                }}
-              />
-            </Box>
-            <Box mt={2}>
-              <Typography variant="caption" color="textSecondary" display="block">
-                Warnings logged: {cheatLogs.length}
-              </Typography>
-              <Typography
-                variant="caption"
-                display="block"
-                sx={{
-                  mt: 0.5,
-                  fontWeight: 700,
-                  color: tabSwitchCount >= TAB_SWITCH_LIMIT ? '#e53935' : tabSwitchCount > 0 ? '#ff9800' : '#4caf50',
-                }}
-              >
-                Tab switches: {tabSwitchCount} / {TAB_SWITCH_LIMIT}
-                {tabSwitchCount >= TAB_SWITCH_LIMIT && ' — ⚠️ Next switch = Auto Submit'}
-              </Typography>
-            </Box>
-          </Paper>
-        </Grid>
-      </Grid>
-    </Container>
+      </Container>
+    </Box>
   );
 };
 
